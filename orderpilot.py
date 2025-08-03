@@ -45,27 +45,29 @@ if file:
 
     # Forecasts vorbereiten
     st.subheader("Absatzprognose je Artikel anzeigen")
-    selected_artikel = st.selectbox("Artikel auswählen", df['artikel'].unique())
     forecasts = {}
+    plots = {}
     artikelgruppen = df.groupby("artikel")
+    selected_artikel = st.selectbox("Artikel auswählen", df['artikel'].unique())
+
     for artikel, gruppe in artikelgruppen:
         try:
             forecast_df = gruppe[["datum", "verkaufsmenge"]].rename(columns={"datum": "ds", "verkaufsmenge": "y"})
             forecast_df["ds"] = pd.to_datetime(forecast_df["ds"])
 
             modell = Prophet(
-                weekly_seasonality=True,
                 yearly_seasonality=True,
-                seasonality_mode='multiplicative'
+                weekly_seasonality=True,
+                daily_seasonality=False,
+                seasonality_mode="multiplicative"
             )
+            modell.add_seasonality(name='monthly', period=30.5, fourier_order=5)
             modell.fit(forecast_df)
             future = modell.make_future_dataframe(periods=6, freq='W')
             forecast = modell.predict(future)
 
-            if artikel == selected_artikel:
-                st.write(f"Absatzprognose für: {artikel}")
-                fig = modell.plot(forecast)
-                st.pyplot(fig)
+            fig = modell.plot(forecast)
+            plots[artikel] = fig
 
             # Nur relevante Prognose-Werte extrahieren (nächste 6 Wochen)
             forecast_values = forecast[['ds', 'yhat']].tail(6)
@@ -75,6 +77,11 @@ if file:
 
         except Exception as e:
             forecasts[artikel] = {"error": str(e)}
+
+    # Anzeige des ausgewählten Artikels
+    if selected_artikel in plots:
+        st.write(f"Absatzprognose für: {selected_artikel}")
+        st.pyplot(plots[selected_artikel])
 
     if st.button("Analyse starten"):
         with st.spinner("GPT analysiert die Artikel inklusive Prognosen..."):
