@@ -53,7 +53,11 @@ if file:
             forecast_df = gruppe[["datum", "verkaufsmenge"]].rename(columns={"datum": "ds", "verkaufsmenge": "y"})
             forecast_df["ds"] = pd.to_datetime(forecast_df["ds"])
 
-            modell = Prophet()
+            modell = Prophet(
+                weekly_seasonality=True,
+                yearly_seasonality=True,
+                seasonality_mode='multiplicative'
+            )
             modell.fit(forecast_df)
             future = modell.make_future_dataframe(periods=6, freq='W')
             forecast = modell.predict(future)
@@ -66,8 +70,8 @@ if file:
             # Nur relevante Prognose-Werte extrahieren (nächste 6 Wochen)
             forecast_values = forecast[['ds', 'yhat']].tail(6)
             forecasts[artikel] = {
-    str(k.date()): int(v) for k, v in forecast_values.set_index('ds')['yhat'].items()
-}
+                str(k.date()): int(v) for k, v in forecast_values.set_index('ds')['yhat'].items()
+            }
 
         except Exception as e:
             forecasts[artikel] = {"error": str(e)}
