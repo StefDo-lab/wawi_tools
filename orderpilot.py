@@ -58,7 +58,9 @@ if file:
 
             # Nur relevante Prognose-Werte extrahieren (nächste 6 Wochen)
             forecast_values = forecast[['ds', 'yhat']].tail(6)
-            forecasts[artikel] = forecast_values.set_index('ds')['yhat'].round().astype(int).to_dict()
+            forecasts[artikel] = {
+    str(k.date()): int(v) for k, v in forecast_values.set_index('ds')['yhat'].items()
+}
 
         except Exception as e:
             forecasts[artikel] = {"error": str(e)}
