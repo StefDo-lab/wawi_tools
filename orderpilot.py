@@ -32,6 +32,9 @@ Restposten sollen max. 5 % des Anfangsbestands betragen.
 Bei schwacher Nachfrage soll der Abverkauf früher starten.
 """)
 
+# Standort (als zusätzlicher Kontext für GPT)
+location = st.text_input("Standort (für GPT-Kontext, z. B. 'Österreich')", value="Österreich")
+
 # Datei-Upload
 file = st.file_uploader("Artikeldaten (CSV) hochladen", type=["csv"])
 
@@ -40,44 +43,54 @@ if file:
     st.subheader("Eingabedaten")
     st.dataframe(df)
 
-    # Prophet-Prognose vorbereiten (vereinfachtes Beispiel für 1 Artikel)
-    st.subheader("Absatzprognose mit Prophet (Artikel 1)")
-    try:
-        forecast_df = df.copy()
-        forecast_df = forecast_df.rename(columns={"datum": "ds", "verkaufsmenge": "y"})
-        forecast_df["ds"] = pd.to_datetime(forecast_df["ds"])
+    # Forecasts vorbereiten
+    forecasts = {}
+    artikelgruppen = df.groupby("artikel")
+    for artikel, gruppe in artikelgruppen:
+        try:
+            forecast_df = gruppe[["datum", "verkaufsmenge"]].rename(columns={"datum": "ds", "verkaufsmenge": "y"})
+            forecast_df["ds"] = pd.to_datetime(forecast_df["ds"])
 
-        modell = Prophet()
-        modell.fit(forecast_df)
-        future = modell.make_future_dataframe(periods=6, freq='W')
-        forecast = modell.predict(future)
+            modell = Prophet()
+            modell.fit(forecast_df)
+            future = modell.make_future_dataframe(periods=6, freq='W')
+            forecast = modell.predict(future)
 
-        fig = modell.plot(forecast)
-        st.pyplot(fig)
-    except Exception as e:
-        st.warning(f"Prognose konnte nicht erstellt werden: {e}")
+            # Nur relevante Prognose-Werte extrahieren (nächste 6 Wochen)
+            forecast_values = forecast[['ds', 'yhat']].tail(6)
+            forecasts[artikel] = forecast_values.set_index('ds')['yhat'].round().astype(int).to_dict()
+
+        except Exception as e:
+            forecasts[artikel] = {"error": str(e)}
 
     if st.button("Analyse starten"):
-        with st.spinner("GPT analysiert die Artikel..."):
-            # Prompt vorbereiten
-            artikel_liste = df.to_dict(orient="records")
+        with st.spinner("GPT analysiert die Artikel inklusive Prognosen..."):
+            artikel_liste = df.groupby("artikel").first().reset_index().to_dict(orient="records")
+
+            # Forecasts an Artikeldaten anhängen
+            for artikel in artikel_liste:
+                artikelname = artikel['artikel']
+                artikel['forecast'] = forecasts.get(artikelname, {})
+
             system_prompt = f"""
-Du bist ein Warenwirtschaftsanalyst.
+Du bist ein Warenwirtschaftsanalyst mit Standort {location}.
 Nutze folgende Firmenrichtlinie für deine Empfehlungen:
 {firm_policy}
 
+Du bekommst zu jedem Artikel eine Absatzprognose für die kommenden Wochen. Berücksichtige dabei den Standort und typische Saisonalität (z. B. Sommerartikel).
+
 Für jeden Artikel sollst du Folgendes zurückgeben:
-- \"article\": Name des Artikels
-- \"order_quantity\": empfohlene Nachbestellmenge (ganzzahlig)
-- \"action_recommendation\": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
-- \"rationale\": Begründung in 1-2 Sätzen
+- "article": Name des Artikels
+- "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
+- "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
+- "rationale": Begründung in 1-2 Sätzen
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
 
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Hier sind die Artikeldaten:\n{json.dumps(artikel_liste)}"}
+                {"role": "user", "content": f"Hier sind die Artikeldaten mit Forecasts:\n{json.dumps(artikel_liste)}"}
             ]
 
             try:
