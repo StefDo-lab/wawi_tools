@@ -44,6 +44,8 @@ if file:
     st.dataframe(df)
 
     # Forecasts vorbereiten
+    st.subheader("Absatzprognose je Artikel anzeigen")
+    selected_artikel = st.selectbox("Artikel auswählen", df['artikel'].unique())
     forecasts = {}
     artikelgruppen = df.groupby("artikel")
     for artikel, gruppe in artikelgruppen:
@@ -55,6 +57,11 @@ if file:
             modell.fit(forecast_df)
             future = modell.make_future_dataframe(periods=6, freq='W')
             forecast = modell.predict(future)
+
+            if artikel == selected_artikel:
+                st.write(f"Absatzprognose für: {artikel}")
+                fig = modell.plot(forecast)
+                st.pyplot(fig)
 
             # Nur relevante Prognose-Werte extrahieren (nächste 6 Wochen)
             forecast_values = forecast[['ds', 'yhat']].tail(6)
