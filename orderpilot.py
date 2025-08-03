@@ -7,7 +7,7 @@ import os
 # GPT-Modell
 MODEL = "gpt-4o"
 
-# API-Key aus Environment Variable
+# API-Key aus Environment Variables
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     st.error("⚠️ Kein OpenAI API-Key gefunden. Bitte in den Streamlit Secrets hinterlegen.")
@@ -21,7 +21,7 @@ st.markdown("""
 Lade eine Artikelliste hoch und gib deine Firmenrichtlinie ein. Die KI analysiert deine Daten und gibt pro Artikel eine empfohlene Bestellmenge und Handlungsanweisung aus.
 """)
 
-# Firmenrichtlinien
+# Firmenrichtlinie
 firm_policy = st.text_area("🧠 Firmenrichtlinie eingeben", value="""
 Wir möchten im Juli noch eine ausreichende Auswahl an Sommerartikeln verfügbar haben.
 Ab 15. August beginnt der Abverkauf.
@@ -52,6 +52,8 @@ Für jeden Artikel sollst du Folgendes zurückgeben:
 - \"order_quantity\": empfohlene Nachbestellmenge (ganzzahlig)
 - \"action_recommendation\": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
 - \"rationale\": Begründung in 1-2 Sätzen
+
+Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
 
             messages = [
@@ -66,7 +68,16 @@ Für jeden Artikel sollst du Folgendes zurückgeben:
                     temperature=0.2
                 )
                 content = response.choices[0].message.content
-                result = json.loads(content)
+
+                # Variante B: robusteres Parsen
+                try:
+                    json_str = content[content.find("[") : content.rfind("]")+1]
+                    result = json.loads(json_str)
+                except Exception as e:
+                    st.error(f"Fehler beim JSON-Parsing: {e}")
+                    st.text(content)
+                    st.stop()
+
                 out_df = pd.DataFrame(result)
 
                 st.subheader("✅ Ergebnis")
