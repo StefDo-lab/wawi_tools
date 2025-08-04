@@ -118,7 +118,7 @@ Für jeden Artikel sollst du Folgendes zurückgeben:
 - "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
 - "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
 - "rationale": Begründung in 1-2 Sätzen
-- optional: Vergleich von Szenarien mit Umsatz/Gewinn bei Anwendung der Rabattstrategie
+- "scenario_comparison": Vergleich zweier Strategien mit Umsatz und Gewinn, im Format: {{"ohne Rabatt": {{"Umsatz": Zahl, "Gewinn": Zahl}}, "mit Rabatt": {{"Umsatz": Zahl, "Gewinn": Zahl}}}}
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
