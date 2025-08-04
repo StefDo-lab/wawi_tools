@@ -162,11 +162,16 @@ Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 
                             # Beste Strategie bestimmen
                             beste_strategie = df_comp.loc[df_comp['Gewinn'].idxmax(), 'Strategie']
-                            row_colors = ["#d4edda" if strategie == beste_strategie else "#ffffff" for strategie in df_comp['Strategie']]
-
-                            st.write(f"🧾 Artikel: **{row['article']}**")
-                            st.table(df_comp.style.apply(lambda x: [
-                                f"background-color: {color}" for color in row_colors], axis=1))
+                            styled = df_comp.style.apply(
+                                lambda row: [
+                                    'background-color: #d4edda' if row['Strategie'] == beste_strategie else ''
+                                    for _ in row
+                                ],
+                                axis=1
+                            )
+                            # Render HTML-Tabelle mit Hervorhebung
+                            html = styled.render()
+                            st.markdown(html, unsafe_allow_html=True))
 
                             # Balkendiagramm
                             fig, ax = plt.subplots()
