@@ -6,7 +6,6 @@ import os
 from prophet import Prophet
 import matplotlib.pyplot as plt
 import datetime
-import ast
 
 # GPT-Modell
 MODEL = "gpt-4o"
@@ -83,24 +82,22 @@ if file:
             plots[artikel] = fig
 
             forecast_values = forecast[['ds', 'yhat']].tail(6)
-            forecasts[artikel] = {
-                str(k.date()): int(v) for k, v in forecast_values.set_index('ds')['yhat'].items()
-            }
+            forecasts[artikel] = {str(k.date()): int(v) for k, v in forecast_values.set_index('ds')['yhat'].items()}
 
         except Exception as e:
             forecasts[artikel] = {"error": str(e)}
 
+    # Vorschau der Forecasts
     if selected_artikel in plots:
         st.write(f"Absatzprognose für: {selected_artikel}")
         st.pyplot(plots[selected_artikel])
 
+    # GPT-Analyse
     if st.button("Analyse starten"):
         with st.spinner("GPT analysiert die Artikel inklusive Prognosen..."):
             artikel_liste = df.groupby("artikel").first().reset_index().to_dict(orient="records")
-
             for artikel in artikel_liste:
-                artikelname = artikel['artikel']
-                artikel['forecast'] = forecasts.get(artikelname, {})
+                artikel['forecast'] = forecasts.get(artikel['artikel'], {})
 
             system_prompt = f"""
 Du bist ein Warenwirtschaftsanalyst mit Standort {location}.
@@ -116,9 +113,9 @@ Du bekommst zu jedem Artikel eine Absatzprognose für die kommenden Wochen sowie
 Für jeden Artikel sollst du Folgendes zurückgeben:
 - "article": Name des Artikels
 - "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
-- "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
+- "action_recommendation": Freitext-Vorschlag
 - "rationale": Begründung in 1-2 Sätzen
-- "scenario_comparison": JSON-Objekt, das für zwei Strategien (z. B. ohne Rabatt und mit Rabatt) jeweils Umsatz und Gewinn angibt
+- "scenario_comparison": JSON-Objekt mit zwei Szenarien (z.B. ohne Rabatt, mit Rabatt) je Umsatz & Gewinn
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
@@ -129,62 +126,35 @@ Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
             ]
 
             try:
-                response = client.chat.completions.create(
-                    model=MODEL,
-                    messages=messages,
-                    temperature=0.2
-                )
+                response = client.chat.completions.create(model=MODEL, messages=messages, temperature=0.2)
                 content = response.choices[0].message.content
-
-                try:
-                    json_str = content[content.find("[") : content.rfind("]")+1]
-                    result = json.loads(json_str)
-                except Exception as e:
-                    st.error(f"Fehler beim JSON-Parsing: {e}")
-                    st.text(content)
-                    st.stop()
-
-                out_df = pd.DataFrame(result)
-
-                st.subheader("Ergebnis")
-                st.dataframe(out_df)
-
-                # Szenarien-Vergleich visualisieren, wenn vorhanden
-                if "scenario_comparison" in out_df.columns:
-                    st.subheader("Szenarienvergleich (Umsatz/Gewinn)")
-                    for i, row in out_df.iterrows():
-                        try:
-                            data = row["scenario_comparison"]
-                            if isinstance(data, str):
-                                data = json.loads(data)
-                            df_comp = pd.DataFrame(data).T.reset_index()
-                            df_comp.columns = ["Strategie", "Umsatz", "Gewinn"]
-
-                            # Beste Strategie bestimmen
-                            beste_strategie = df_comp.loc[df_comp['Gewinn'].idxmax(), 'Strategie']
-                            styled = df_comp.style.apply(
-                                lambda row: [
-                                    'background-color: #d4edda' if row['Strategie'] == beste_strategie else ''
-                                    for _ in row
-                                ],
-                                axis=1
-                            )
-                            # Render HTML-Tabelle mit Hervorhebung
-                            html = styled.render()
-                            st.markdown(html, unsafe_allow_html=True)
-
-                            # Balkendiagramm
-                            fig, ax = plt.subplots()
-                            df_comp.plot(kind='bar', x='Strategie', y=['Umsatz', 'Gewinn'], ax=ax)
-                            ax.set_ylabel("Wert (€)")
-                            ax.set_title(f"Szenarienvergleich: {row['article']}")
-                            st.pyplot(fig)
-
-                        except Exception as e:
-                            st.warning(f"Konnte Szenario für Artikel {row['article']} nicht visualisieren: {e}")
-
-                csv = out_df.to_csv(index=False).encode("utf-8")
-                st.download_button("Ergebnis als CSV herunterladen", csv, "bestellvorschlaege.csv")
-
+                json_str = content[content.find('['): content.rfind(']')+1]
+                result = json.loads(json_str)
             except Exception as e:
                 st.error(f"Fehler bei der GPT-Verarbeitung: {e}")
+                st.stop()
+
+            out_df = pd.DataFrame(result)
+            st.subheader("Ergebnis")
+            st.dataframe(out_df)
+
+            # Szenarienvergleich
+            if "scenario_comparison" in out_df.columns:
+                st.subheader("Szenarienvergleich (Umsatz/Gewinn)")
+                for _, row in out_df.iterrows():
+                    try:
+                        data = row["scenario_comparison"]
+                        if isinstance(data, str):
+                            data = json.loads(data)
+                        df_comp = pd.DataFrame(data).T.reset_index()
+                        df_comp.columns = ["Strategie", "Umsatz", "Gewinn"]
+                        # Markiere empfohlene Strategie
+                        df_comp['Empfohlen'] = df_comp['Gewinn'] == df_comp['Gewinn'].max()
+                        st.write(f"Artikel: **{row['article']}**")
+                        st.table(df_comp)
+                    except Exception as e:
+                        st.warning(f"Visualisierung fehlgeschlagen für Artikel {row['article']}: {e}")
+
+            # CSV Download
+            csv = out_df.to_csv(index=False).encode("utf-8")
+            st.download_button("Ergebnis als CSV herunterladen", csv, "bestellvorschlaege.csv")
