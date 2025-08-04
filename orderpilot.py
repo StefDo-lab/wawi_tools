@@ -171,7 +171,7 @@ Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
                             )
                             # Render HTML-Tabelle mit Hervorhebung
                             html = styled.render()
-                            st.markdown(html, unsafe_allow_html=True))
+                            st.markdown(html, unsafe_allow_html=True)
 
                             # Balkendiagramm
                             fig, ax = plt.subplots()
