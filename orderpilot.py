@@ -116,9 +116,9 @@ Du bekommst zu jedem Artikel eine Absatzprognose für die kommenden Wochen sowie
 Für jeden Artikel sollst du Folgendes zurückgeben:
 - "article": Name des Artikels
 - "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
-- "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
+- "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
 - "rationale": Begründung in 1-2 Sätzen
-- "scenario_comparison": JSON-Objekt mit Umsatz und Gewinn beider Strategien, z. B.: {{"ohne Rabatt": {{"Umsatz": 1000, "Gewinn": 500}}, "mit Rabatt": {{"Umsatz": 1200, "Gewinn": 600}}}}
+- "scenario_comparison": JSON-Objekt, das für zwei Strategien (z. B. ohne Rabatt und mit Rabatt) jeweils Umsatz und Gewinn angibt
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
