@@ -6,6 +6,7 @@ import os
 from prophet import Prophet
 import matplotlib.pyplot as plt
 import datetime
+import ast
 
 # GPT-Modell
 MODEL = "gpt-4o"
@@ -147,6 +148,19 @@ Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 
                 st.subheader("Ergebnis")
                 st.dataframe(out_df)
+
+                # Szenarien-Vergleich visualisieren, wenn vorhanden
+                if "scenario_comparison" in out_df.columns:
+                    st.subheader("Szenarienvergleich (Umsatz/Gewinn)")
+                    for i, row in out_df.iterrows():
+                        try:
+                            data = ast.literal_eval(row["scenario_comparison"])
+                            df_comp = pd.DataFrame(data).T.reset_index()
+                            df_comp.columns = ["Strategie", "Umsatz", "Gewinn"]
+                            st.write(f"Artikel: {row['article']}")
+                            st.bar_chart(df_comp.set_index("Strategie"))
+                        except Exception as e:
+                            st.warning(f"Konnte Szenario für Artikel {row['article']} nicht visualisieren: {e}")
 
                 csv = out_df.to_csv(index=False).encode("utf-8")
                 st.download_button("Ergebnis als CSV herunterladen", csv, "bestellvorschlaege.csv")
