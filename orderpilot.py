@@ -35,6 +35,13 @@ Bei schwacher Nachfrage soll der Abverkauf früher starten.
 # Standort (als zusätzlicher Kontext für GPT)
 location = st.text_input("Standort (für GPT-Kontext, z. B. 'Österreich')", value="Österreich")
 
+# Rabattstrategie-Eingaben
+st.subheader("Rabattstrategie definieren")
+abverkaufsbeginn = st.date_input("📅 Abverkaufsbeginn", format="%d.%m.%Y")
+rabatt_phase_1 = st.number_input("🔽 Rabatt in Phase 1 (%)", value=30)
+saisonende = st.date_input("📅 Saisonende", format="%d.%m.%Y")
+restwert_prozent = st.number_input("🔽 Restwert (% vom Einkaufspreis)", value=30)
+
 # Datei-Upload
 file = st.file_uploader("Artikeldaten (CSV) hochladen", type=["csv"])
 
@@ -42,6 +49,10 @@ if file:
     df = pd.read_csv(file)
     st.subheader("Eingabedaten")
     st.dataframe(df)
+
+    if not {'einkaufspreis', 'verkaufspreis'}.issubset(df.columns):
+        st.error("❌ Die CSV-Datei muss die Spalten 'einkaufspreis' und 'verkaufspreis' enthalten.")
+        st.stop()
 
     # Forecasts vorbereiten
     st.subheader("Absatzprognose je Artikel anzeigen")
@@ -69,7 +80,6 @@ if file:
             fig = modell.plot(forecast)
             plots[artikel] = fig
 
-            # Nur relevante Prognose-Werte extrahieren (nächste 6 Wochen)
             forecast_values = forecast[['ds', 'yhat']].tail(6)
             forecasts[artikel] = {
                 str(k.date()): int(v) for k, v in forecast_values.set_index('ds')['yhat'].items()
@@ -78,7 +88,6 @@ if file:
         except Exception as e:
             forecasts[artikel] = {"error": str(e)}
 
-    # Anzeige des ausgewählten Artikels
     if selected_artikel in plots:
         st.write(f"Absatzprognose für: {selected_artikel}")
         st.pyplot(plots[selected_artikel])
@@ -87,7 +96,6 @@ if file:
         with st.spinner("GPT analysiert die Artikel inklusive Prognosen..."):
             artikel_liste = df.groupby("artikel").first().reset_index().to_dict(orient="records")
 
-            # Forecasts an Artikeldaten anhängen
             for artikel in artikel_liste:
                 artikelname = artikel['artikel']
                 artikel['forecast'] = forecasts.get(artikelname, {})
@@ -97,20 +105,25 @@ Du bist ein Warenwirtschaftsanalyst mit Standort {location}.
 Nutze folgende Firmenrichtlinie für deine Empfehlungen:
 {firm_policy}
 
-Du bekommst zu jedem Artikel eine Absatzprognose für die kommenden Wochen. Berücksichtige dabei den Standort und typische Saisonalität (z. B. Sommerartikel).
+Die Rabattstrategie lautet:
+- Abverkaufsbeginn: {abverkaufsbeginn.strftime('%d.%m.%Y')} mit {rabatt_phase_1}% Rabatt
+- Saisonende: {saisonende.strftime('%d.%m.%Y')} mit Restwert von {restwert_prozent}% des Einkaufspreises
+
+Du bekommst zu jedem Artikel eine Absatzprognose für die kommenden Wochen sowie Einkaufspreis und Verkaufspreis.
 
 Für jeden Artikel sollst du Folgendes zurückgeben:
 - "article": Name des Artikels
 - "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
 - "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
 - "rationale": Begründung in 1-2 Sätzen
+- optional: Vergleich von Szenarien mit Umsatz/Gewinn bei Anwendung der Rabattstrategie
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
 
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Hier sind die Artikeldaten mit Forecasts:\n{json.dumps(artikel_liste)}"}
+                {"role": "user", "content": f"Hier sind die Artikeldaten mit Forecasts, Einkaufspreis und Verkaufspreis:\n{json.dumps(artikel_liste)}"}
             ]
 
             try:
