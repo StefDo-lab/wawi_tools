@@ -37,11 +37,15 @@ Bei schwacher Nachfrage soll der Abverkauf früher starten.
 location = st.text_input("Standort (für GPT-Kontext, z. B. 'Österreich')", value="Österreich")
 
 # Rabattstrategie-Eingaben
-st.subheader("Rabattstrategie definieren")
+st.subheader("Rabattstrategie und Parameter definieren")
 abverkaufsbeginn = st.date_input("Abverkaufsbeginn", value=datetime.date.today())
 rabatt_phase_1 = st.number_input("Rabatt in Phase 1 (%)", value=30)
 saisonende = st.date_input("Saisonende", value=datetime.date.today() + datetime.timedelta(days=30))
 restwert_prozent = st.number_input("Restwert (% vom Einkaufspreis)", value=30)
+
+# Neue Parameter: Elastizität und Lieferzeit
+elastizitaet = st.slider("Preiselastizität (0 = unempfindlich, >1 = empfindlich)", min_value=0.0, max_value=3.0, value=1.5, step=0.1)
+lieferzeit_tage = st.number_input("Lieferzeit (Tage)", value=14, min_value=0)
 
 # Datei-Upload
 file = st.file_uploader("Artikeldaten (CSV) hochladen", type=["csv"])
