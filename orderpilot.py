@@ -37,10 +37,10 @@ location = st.text_input("Standort (für GPT-Kontext, z. B. 'Österreich')", v
 
 # Rabattstrategie-Eingaben
 st.subheader("Rabattstrategie definieren")
-abverkaufsbeginn = st.date_input("📅 Abverkaufsbeginn", format="%d.%m.%Y")
-rabatt_phase_1 = st.number_input("🔽 Rabatt in Phase 1 (%)", value=30)
-saisonende = st.date_input("📅 Saisonende", format="%d.%m.%Y")
-restwert_prozent = st.number_input("🔽 Restwert (% vom Einkaufspreis)", value=30)
+abverkaufsbeginn = st.date_input("Abverkaufsbeginn", format="%d.%m.%Y")
+rabatt_phase_1 = st.number_input("Rabatt in Phase 1 (%)", value=30)
+saisonende = st.date_input("Saisonende", format="%d.%m.%Y")
+restwert_prozent = st.number_input("Restwert (% vom Einkaufspreis)", value=30)
 
 # Datei-Upload
 file = st.file_uploader("Artikeldaten (CSV) hochladen", type=["csv"])
