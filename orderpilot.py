@@ -118,7 +118,7 @@ Für jeden Artikel sollst du Folgendes zurückgeben:
 - "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
 - "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
 - "rationale": Begründung in 1-2 Sätzen
-- "scenario_comparison": Vergleich zweier Strategien mit Umsatz und Gewinn, im Format: {{"ohne Rabatt": {{"Umsatz": Zahl, "Gewinn": Zahl}}, "mit Rabatt": {{"Umsatz": Zahl, "Gewinn": Zahl}}}}
+- "scenario_comparison": Vergleich zweier Strategien mit Umsatz und Gewinn, im Format: {"ohne Rabatt": {"Umsatz": Zahl, "Gewinn": Zahl}, "mit Rabatt": {"Umsatz": Zahl, "Gewinn": Zahl}}
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
@@ -157,8 +157,22 @@ Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
                             data = ast.literal_eval(row["scenario_comparison"])
                             df_comp = pd.DataFrame(data).T.reset_index()
                             df_comp.columns = ["Strategie", "Umsatz", "Gewinn"]
-                            st.write(f"Artikel: {row['article']}")
-                            st.bar_chart(df_comp.set_index("Strategie"))
+
+                            # Beste Strategie bestimmen
+                            beste_strategie = df_comp.loc[df_comp['Gewinn'].idxmax(), 'Strategie']
+                            row_colors = ["#d4edda" if strategie == beste_strategie else "#ffffff" for strategie in df_comp['Strategie']]
+
+                            st.write(f"🧾 Artikel: **{row['article']}**")
+                            st.table(df_comp.style.apply(lambda x: [
+                                f"background-color: {color}" for color in row_colors], axis=1))
+
+                            # Balkendiagramm
+                            fig, ax = plt.subplots()
+                            df_comp.plot(kind='bar', x='Strategie', y=['Umsatz', 'Gewinn'], ax=ax)
+                            ax.set_ylabel("Wert (€)")
+                            ax.set_title(f"Szenarienvergleich: {row['article']}")
+                            st.pyplot(fig)
+
                         except Exception as e:
                             st.warning(f"Konnte Szenario für Artikel {row['article']} nicht visualisieren: {e}")
 
