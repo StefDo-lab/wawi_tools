@@ -118,7 +118,7 @@ Für jeden Artikel sollst du Folgendes zurückgeben:
 - "order_quantity": empfohlene Nachbestellmenge (ganzzahlig)
 - "action_recommendation": Freitext-Vorschlag (z. B. Rabattieren, Abverkaufen, Preis halten)
 - "rationale": Begründung in 1-2 Sätzen
-- "scenario_comparison": Vergleich zweier Strategien mit Umsatz und Gewinn, im Format: {"ohne Rabatt": {"Umsatz": Zahl, "Gewinn": Zahl}, "mit Rabatt": {"Umsatz": Zahl, "Gewinn": Zahl}}
+- "scenario_comparison": JSON-Objekt mit Umsatz und Gewinn beider Strategien, z. B.: {{"ohne Rabatt": {{"Umsatz": 1000, "Gewinn": 500}}, "mit Rabatt": {{"Umsatz": 1200, "Gewinn": 600}}}}
 
 Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
 """
@@ -154,7 +154,9 @@ Antworte ausschließlich mit einem JSON-Array, ohne Einleitung oder Kommentare.
                     st.subheader("Szenarienvergleich (Umsatz/Gewinn)")
                     for i, row in out_df.iterrows():
                         try:
-                            data = ast.literal_eval(row["scenario_comparison"])
+                            data = row["scenario_comparison"]
+                            if isinstance(data, str):
+                                data = json.loads(data)
                             df_comp = pd.DataFrame(data).T.reset_index()
                             df_comp.columns = ["Strategie", "Umsatz", "Gewinn"]
 
